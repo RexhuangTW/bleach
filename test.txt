@@ -1,0 +1,77 @@
+    ds_config_t ds_init_cfg;
+    uint32_t ds_ret = 0;
+    uint8_t rd_buf[0xFF], wr_buf[0xFF];
+    int i, j, ds_count = 0xFF;
+    ds_rw_t t_ds_r, t_ds_w;
+
+    ds_init_cfg.start_address = 0xF3000;
+    ds_init_cfg.end_address = 0xFB000;	
+    ds_init_cfg.ds_page_mode = DS_ONE_PAGE_MODE;	
+    ds_init_cfg.page_size = DATA_ONE_PAGE_SIZE;
+    ds_ret = ds_initinal(ds_init_cfg);
+
+    if(ds_ret != STATUS_SUCCESS)
+    {
+        printf("ds_initial fail %d\r\n", ds_ret);
+        while(1);
+    }  
+    for(i=0;i<ds_count;i++)
+    {
+        wr_buf[i] = i;
+    }
+
+
+    for(i=1;i<ds_count;i++)
+    {
+        t_ds_w.type = i;
+        t_ds_w.len = i;
+        t_ds_w.address = (uint32_t)wr_buf;
+        ds_ret = ds_write(&t_ds_w);
+
+        printf("type %d len %d address %x\r\n", t_ds_w.type, t_ds_w.len, t_ds_w.address);
+        if(ds_ret != STATUS_SUCCESS)
+        {
+            printf("ds_write failed %d\r\n", ds_ret);
+        }
+        else
+        {
+            flush_cache();
+            printf("ds type %d write done!\r\n", i);
+        }        
+    }
+
+    for(i=1;i<ds_count;i++)
+    {
+        t_ds_r.type = i;
+        t_ds_r.len = 0;
+        t_ds_r.address = 0;
+
+        ds_ret = ds_read(&t_ds_r);
+
+        if(ds_ret != STATUS_SUCCESS)
+        {
+            printf("ds_read failed %d\r\n", ds_ret);
+        }
+
+        if(t_ds_r.address != 0 && t_ds_r.len !=0)
+        {
+            for(j=0;j<t_ds_r.len;i++)
+                rd_buf[j] = flash_read_byte(t_ds_r.address + j);
+
+            if(memcmp(rd_buf, wr_buf, 200) != 0)
+            {
+                printf("ds %d verifiy fail!\r\n", i);
+            }
+            else
+            {
+                printf("ds read type %d success!\r\n", i);
+            }
+        }
+        else
+        {
+            printf("ds type %d not found!\r\n", i);
+        }
+
+    }
+
+    while(1);
